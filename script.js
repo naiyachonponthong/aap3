@@ -2817,7 +2817,7 @@ function createSalesChart(dailySales) {
 /**
  * รายการ action ที่ใช้ GET (ข้อมูลทั่วไป, ไม่มี body ใหญ่)
  */
-var GET_ACTIONS = ['logout', 'validateSession', 'getConfig', 'getProducts', 'getMembers', 'getUsers', 'getRecentSales', 'getSalesReport', 'getProfitSharingReport', 'findProductByBarcode', 'getProductImages'];
+var GET_ACTIONS = ['login', 'logout', 'validateSession', 'getConfig', 'getProducts', 'getMembers', 'getUsers', 'getRecentSales', 'getSalesReport', 'getProfitSharingReport', 'findProductByBarcode', 'getProductImages'];
 
 /**
  * เรียก API ผ่าน Fetch (GET สำหรับข้อมูลทั่วไป, POST สำหรับข้อมูลใหญ่)
