@@ -16,7 +16,7 @@ var CACHE_TTL = 30000; // 30 วินาที
 
 // ===== Global Variables =====
 var currentUser = null;
-var sessionId = storage.getItem('schoolCoop_sessionId') || null;
+var sessionId = null;
 var currentCart = [];
 var currentMember = null;
 var paymentMethod = 'cash';
@@ -103,6 +103,9 @@ document.addEventListener('DOMContentLoaded', function() {
 async function initializeApp() {
     showLoading();
     try {
+        // โหลด sessionId จาก storage (ต้องทำหลังจาก storage ถูกประกาศ)
+        sessionId = storage.getItem('schoolCoop_sessionId') || null;
+        
         // ต้องโหลด Config ก่อนเพื่อตั้งค่าชื่อแอปก่อนแสดง UI
         await loadSystemConfig(); 
 
