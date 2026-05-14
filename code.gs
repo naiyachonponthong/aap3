@@ -133,16 +133,44 @@ function handleApiGet(params) {
  */
 function doPost(e) {
   try {
-    let requestData;
+    var contents = e.postData.contents;
+    var requestData;
+    
+    // ลอง parse เป็น JSON ก่อน (แบบเก่า)
     try {
-      requestData = JSON.parse(e.postData.contents);
-    } catch (parseError) {
-      return createJsonResponse({ success: false, message: 'Invalid JSON body' });
+      requestData = JSON.parse(contents);
+    } catch (jsonError) {
+      // ถ้าไม่ใช่ JSON ให้ parse เป็น form-urlencoded
+      var params = {};
+      var pairs = contents.split('&');
+      for (var i = 0; i < pairs.length; i++) {
+        var pair = pairs[i].split('=');
+        if (pair.length === 2) {
+          params[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1]);
+        }
+      }
+      
+      // แปลงจาก fn/args format (เหมือนระบบวัสดุ) เป็น action/data format
+      requestData = {
+        action: params.fn || params.action,
+        sessionId: params.sessionId || null
+      };
+      
+      if (params.args) {
+        try {
+          var args = JSON.parse(params.args);
+          if (args && args.length > 0) {
+            requestData.data = args[0];
+          }
+        } catch (e) {
+          requestData.data = {};
+        }
+      } else {
+        requestData.data = {};
+      }
     }
     
-    const { action, data, sessionId } = requestData;
     const result = handleApiRequest(requestData);
-    
     return createJsonResponse(result);
     
   } catch (error) {

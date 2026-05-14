@@ -2839,15 +2839,14 @@ async function apiCall(action, data, sessionId) {
     try {
         var result;
         
+        // สร้าง args array เหมือนระบบวัสดุ
+        var args = [];
+        if (data && Object.keys(data).length > 0) {
+            args = [data];
+        }
+        
         if (GET_ACTIONS.indexOf(action) !== -1) {
             // GET: ข้อมูลทั่วไปผ่าน Query String
-            var args = [];
-            if (action === 'login') {
-                args = [data.username, data.password];
-            } else if (data && Object.keys(data).length > 0) {
-                args = [data];
-            }
-            
             var queryParams = [];
             queryParams.push('fn=' + encodeURIComponent(action));
             if (sessionId) queryParams.push('sessionId=' + encodeURIComponent(sessionId));
@@ -2858,6 +2857,7 @@ async function apiCall(action, data, sessionId) {
             
             var response = await fetch(url, {
                 method: 'GET',
+                mode: 'cors',
                 headers: { 'Accept': 'application/json' }
             });
             
@@ -2876,16 +2876,18 @@ async function apiCall(action, data, sessionId) {
             console.log('[API] JSON result:', result);
             
         } else {
-            // POST: ข้อมูลใหญ่ (base64 images, processSale, etc.)
+            // POST: ข้อมูลใหญ่ (login, base64 images, processSale, etc.)
             console.log('[API] POST', action);
+            var bodyParams = [];
+            bodyParams.push('fn=' + encodeURIComponent(action));
+            if (sessionId) bodyParams.push('sessionId=' + encodeURIComponent(sessionId));
+            if (args.length > 0) bodyParams.push('args=' + encodeURIComponent(JSON.stringify(args)));
+            
             var response = await fetch(API_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify({
-                    action: action,
-                    data: data,
-                    sessionId: sessionId
-                })
+                mode: 'cors',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+                body: bodyParams.join('&')
             });
             
             console.log('[API] Response status:', response.status, 'content-type:', response.headers.get('content-type'));
