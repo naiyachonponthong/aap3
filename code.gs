@@ -152,11 +152,29 @@ function doPost(e) {
 }
 
 /**
+ * จัดการ CORS Preflight (OPTIONS)
+ */
+function doOptions(e) {
+  const output = ContentService.createTextOutput('');
+  output.setHeaders({
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Accept'
+  });
+  return output;
+}
+
+/**
  * สร้าง JSON response พร้อม CORS headers
  */
 function createJsonResponse(data) {
   const output = ContentService.createTextOutput(JSON.stringify(data));
   output.setMimeType(ContentService.MimeType.JSON);
+  output.setHeaders({
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Accept'
+  });
   return output;
 }
 

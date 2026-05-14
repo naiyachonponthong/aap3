@@ -240,10 +240,12 @@ async function handleLogin(e) {
     }
     
     showLoading();
+    console.log('[LOGIN] Starting login for:', username);
     try {
         var result = await apiCall('login', { username: username, password: password });
+        console.log('[LOGIN] API result:', result);
         
-        if (result.success) {
+        if (result && result.success) {
             sessionId = result.sessionId;
             currentUser = result.user;
             storage.setItem('schoolCoop_sessionId', sessionId);
@@ -252,11 +254,12 @@ async function handleLogin(e) {
             showMainApp();
             await loadInitialData();
         } else {
-            showError(result.message || 'ไม่สามารถเข้าสู่ระบบได้');
+            console.error('[LOGIN] Login failed:', result);
+            showError(result && result.message ? result.message : 'ไม่สามารถเข้าสู่ระบบได้');
         }
     } catch (error) {
-        console.error('Login error:', error);
-        showError('เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
+        console.error('[LOGIN] Exception:', error);
+        showError('เกิดข้อผิดพลาดในการเข้าสู่ระบบ: ' + (error.message || error));
     }
     hideLoading();
 }
@@ -2812,7 +2815,7 @@ function createSalesChart(dailySales) {
 /**
  * รายการ action ที่ใช้ GET (ข้อมูลทั่วไป, ไม่มี body ใหญ่)
  */
-var GET_ACTIONS = ['login', 'logout', 'validateSession', 'getConfig', 'getProducts', 'getMembers', 'getUsers', 'getRecentSales', 'getSalesReport', 'getProfitSharingReport', 'findProductByBarcode', 'getProductImages'];
+var GET_ACTIONS = ['logout', 'validateSession', 'getConfig', 'getProducts', 'getMembers', 'getUsers', 'getRecentSales', 'getSalesReport', 'getProfitSharingReport', 'findProductByBarcode', 'getProductImages'];
 
 /**
  * เรียก API ผ่าน Fetch (GET สำหรับข้อมูลทั่วไป, POST สำหรับข้อมูลใหญ่)
@@ -2851,17 +2854,30 @@ async function apiCall(action, data, sessionId) {
             if (args.length > 0) queryParams.push('args=' + encodeURIComponent(JSON.stringify(args)));
             
             var url = API_URL + '?' + queryParams.join('&');
+            console.log('[API] GET', url);
             
             var response = await fetch(url, {
                 method: 'GET',
                 headers: { 'Accept': 'application/json' }
             });
             
+            console.log('[API] Response status:', response.status, 'content-type:', response.headers.get('content-type'));
+            
             if (!response.ok) throw new Error('HTTP ' + response.status);
+            
+            var contentType = response.headers.get('content-type') || '';
+            if (contentType.indexOf('application/json') === -1) {
+                var text = await response.text();
+                console.error('[API] Expected JSON but got:', contentType, text.substring(0, 200));
+                throw new Error('Response is not JSON. Got: ' + contentType);
+            }
+            
             result = await response.json();
+            console.log('[API] JSON result:', result);
             
         } else {
             // POST: ข้อมูลใหญ่ (base64 images, processSale, etc.)
+            console.log('[API] POST', action);
             var response = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
@@ -2872,8 +2888,19 @@ async function apiCall(action, data, sessionId) {
                 })
             });
             
+            console.log('[API] Response status:', response.status, 'content-type:', response.headers.get('content-type'));
+            
             if (!response.ok) throw new Error('HTTP ' + response.status);
+            
+            var contentType = response.headers.get('content-type') || '';
+            if (contentType.indexOf('application/json') === -1) {
+                var text = await response.text();
+                console.error('[API] Expected JSON but got:', contentType, text.substring(0, 200));
+                throw new Error('Response is not JSON. Got: ' + contentType);
+            }
+            
             result = await response.json();
+            console.log('[API] JSON result:', result);
         }
         
         // เก็บ Cache สำหรับ GET requests ที่สำเร็จ
