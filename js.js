@@ -1,4 +1,3 @@
-<script>
 /**
  * js.js - ระบบจัดการ UI, Sidebar, และ Page Navigation v2.3
  *
@@ -562,4 +561,3 @@ document.addEventListener('keydown', function(e) {
 });
 
 console.log('UI Navigation System (js.js) v2.3 (Collapsible) Loaded.');
-</script>
