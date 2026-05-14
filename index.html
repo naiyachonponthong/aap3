@@ -1,0 +1,1324 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 1. Title จะถูกเปลี่ยนโดย script.js (document.title) -->
+    <title>ระบบร้านค้าสหกรณ์โรงเรียน</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    
+    <!-- SheetJS (XLSX) สำหรับสร้าง Excel ฝั่ง Client -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    
+    <?!= include('styles') ?>
+    
+</head>
+<body class="bg-gray-100">
+    <!-- Loading Spinner -->
+    <!-- Custom Loading Spinner -->
+    <div id="loadingSpinner" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center hidden" style="z-index: 9999 !important; backdrop-filter: blur(2px);">
+        <div class="bg-white rounded-2xl p-8 flex flex-col items-center space-y-4 shadow-2xl max-w-sm mx-4">
+            <!-- Spinner Animation -->
+            <div class="relative w-16 h-16">
+                <div class="absolute inset-0 rounded-full border-4 border-gray-200"></div>
+                <div class="absolute inset-0 rounded-full border-4 border-transparent border-t-blue-500 border-r-blue-400" style="animation: spin 1s linear infinite;"></div>
+                <div class="absolute inset-2 rounded-full border-4 border-transparent border-b-green-500" style="animation: spin 2s linear infinite reverse;"></div>
+            </div>
+            <!-- Loading Text -->
+            <span class="text-gray-700 font-semibold text-lg spinner-text text-center" style="white-space: nowrap;">กำลังโหลดข้อมูล...</span>
+            <!-- Progress Dots -->
+            <div class="flex space-x-2 justify-center">
+                <div class="w-2 h-2 bg-blue-500 rounded-full" style="animation: bounce 1.4s infinite;"></div>
+                <div class="w-2 h-2 bg-blue-500 rounded-full" style="animation: bounce 1.4s infinite 0.2s;"></div>
+                <div class="w-2 h-2 bg-blue-500 rounded-full" style="animation: bounce 1.4s infinite 0.4s;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Popup Modal -->
+    <div id="imagePopupModal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 hidden" onclick="hideImagePopup()">
+        <div class="relative max-w-4xl max-h-screen p-4">
+            <button onclick="hideImagePopup()" class="absolute -top-4 -right-4 bg-white rounded-full w-10 h-10 flex items-center justify-center text-gray-600 hover:text-gray-800 shadow-lg">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+            <img id="popupImage" src="" alt="Preview" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl">
+            <div id="popupImageCaption" class="text-white text-center mt-4 text-lg font-medium"></div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all">
+            <div class="p-8">
+                <div class="text-center mb-8">
+                    <div class="mx-auto w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                        <i class="fas fa-store text-blue-600 text-3xl"></i>
+                    </div>
+                    <!-- 2. เพิ่ม id="loginAppName" -->
+                    <h1 id="loginAppName" class="text-2xl font-bold text-gray-800 mb-2">ระบบร้านค้าสหกรณ์</h1>
+                    <p class="text-gray-600">กรุณาเข้าสู่ระบบเพื่อดำเนินการต่อ</p>
+                </div>
+                
+                <form id="loginForm" class="space-y-6">
+                    <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">ชื่อผู้ใช้</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-user text-gray-400"></i>
+                            </div>
+                            <input type="text" id="username" required 
+                                   class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                   placeholder="กรอกชื่อผู้ใช้">
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">รหัสผ่าน</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-lock text-gray-400"></i>
+                            </div>
+                            <input type="password" id="password" required 
+                                   class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                   placeholder="กรอกรหัสผ่าน">
+                        </div>
+                    </div>
+                    
+                    <button type="submit" 
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors flex items-center justify-center space-x-2">
+                        <i class="fas fa-sign-in-alt"></i>
+                        <span>เข้าสู่ระบบ</span>
+                    </button>
+                </form>
+                
+                <div class="mt-6 text-center text-sm text-gray-500">
+                    <p>ผู้ใช้เริ่มต้น: admin/admin123 หรือ teacher/teacher123</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="mainApp" class="hidden">
+        <!-- Top Navigation -->
+        <nav class="bg-white shadow-sm border-b fixed top-0 left-0 right-0 z-30">
+            <div class="px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex items-center space-x-4">
+                        <button id="sidebarToggle" class="text-gray-600 hover:text-gray-900 focus:outline-none focus:text-gray-900 transition-colors">
+                            <i class="fas fa-bars text-xl"></i>
+                        </button>
+                        
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-store text-blue-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <!-- 3. เพิ่ม id="navbarAppName" -->
+                                <h1 id="navbarAppName" class="text-xl font-bold text-gray-800">ร้านค้าสหกรณ์</h1>
+                                <!-- 4. เพิ่ม id="navbarAppVersion" -->
+                                <p id="navbarAppVersion" class="text-sm text-gray-500">ระบบจัดการร้านค้า v2.3 </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-4">
+                        <div class="text-right hidden md:block">
+                            <p class="text-sm font-medium text-gray-800" id="userDisplayName"></p>
+                            <p class="text-xs text-gray-500" id="userRole"></p>
+                        </div>
+                        <button id="logoutBtn" 
+                                class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span class="hidden md:inline">ออกจากระบบ</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Sidebar -->
+        <aside id="sidebar" class="fixed left-0 top-16 h-full bg-white shadow-lg transform -translate-x-full z-20 border-r">
+            <div class="p-4 custom-scrollbar" style="height: calc(100vh - 4rem); overflow-y: auto;">
+                <div id="sidebarStats" class="rounded-lg p-4 text-white mb-6" style="background: linear-gradient(135deg, #3b82f6 0%, #9333ea 100%);">
+                    <h3 class="text-sm font-medium opacity-90 sidebar-text">สถิติวันนี้</h3>
+                    <div class="flex justify-between items-center mt-2">
+                        <div class="sidebar-text">
+                            <p class="text-xs opacity-80">ยอดขาย</p>
+                            <p class="text-lg font-bold" id="sidebarTodaySales">฿0</p>
+                        </div>
+                        <div class="text-right sidebar-text">
+                            <p class="text-xs opacity-80">รายการ</p>
+                            <p class="text-lg font-bold" id="sidebarTodayTransactions">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <nav class="space-y-2">
+                    <a href="#" onclick="showDashboard()" class="sidebar-menu-item active">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span class="sidebar-text">ภาพรวมร้านค้า</span>
+                    </a>
+                    
+                    <a href="#" onclick="showPage('paymentPage')" class="sidebar-menu-item">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span class="sidebar-text">ขายสินค้า</span>
+                    </a>
+                    
+                    <a href="#" onclick="showPage('manageProductsPage')" class="sidebar-menu-item">
+                        <i class="fas fa-boxes"></i>
+                        <span class="sidebar-text">จัดการสินค้า</span>
+                    </a>
+                    
+                    <a href="#" onclick="showPage('manageMembersPage')" class="sidebar-menu-item">
+                        <i class="fas fa-users"></i>
+                        <span class="sidebar-text">จัดการสมาชิก</span>
+                    </a>
+                    
+                    <a href="#" onclick="showPage('reportsPage')" class="sidebar-menu-item">
+                        <i class="fas fa-chart-line"></i>
+                        <span class="sidebar-text">รายงานยอดขาย</span>
+                    </a>
+                    
+                    <div class="border-t pt-4 mt-4">
+                        <a href="#" onclick="showPage('manageUsersPage')" class="sidebar-menu-item" data-permission="admin" data-role="admin">
+                            <i class="fas fa-user-shield"></i>
+                            <span class="sidebar-text">จัดการผู้ใช้งาน</span>
+                        </a>
+                        
+                        <a href="#" onclick="showPage('settingsPage')" class="sidebar-menu-item" data-permission="admin" data-role="admin">
+                            <i class="fas fa-cog"></i>
+                            <span class="sidebar-text">ตั้งค่าระบบ</span>
+                        </a>
+                    </div>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Sidebar Overlay (Mobile) -->
+        <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-10 hidden"></div>
+
+        <!-- Main Content -->
+        <main id="mainContent" class="transition-all duration-300 ease-in-out pt-16">
+            <!-- Breadcrumb Header -->
+            <div class="bg-white border-b px-4 sm:px-6 lg:px-8 py-4">
+                <div class="flex items-center space-x-2 text-sm text-gray-600">
+                    <i class="fas fa-home"></i>
+                    <span>หน้าหลัก</span>
+                    <i class="fas fa-chevron-right text-xs"></i>
+                    <span id="breadcrumbCurrent" class="text-gray-900 font-medium">ภาพรวมร้านค้า</span>
+                </div>
+            </div>
+
+            <!-- Page: Dashboard -->
+            <div id="dashboardContent" class="page-content p-4 sm:p-6 lg:p-8">
+                <!-- Quick Actions -->
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+                    <div class="dashboard-card bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-4 text-white cursor-pointer"
+                         onclick="showPage('paymentPage')">
+                        <div class="text-center">
+                            <i class="fas fa-shopping-cart text-2xl mb-2"></i>
+                            <h3 class="text-sm font-semibold mb-1">ขายสินค้า</h3>
+                            <p class="text-xs text-blue-100">ระบบขายแบบเร็ว</p>
+                        </div>
+                    </div>
+                    <div class="dashboard-card bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl shadow-lg p-4 text-white cursor-pointer"
+                         onclick="showPage('manageProductsPage')">
+                        <div class="text-center">
+                            <i class="fas fa-boxes text-2xl mb-2"></i>
+                            <h3 class="text-sm font-semibold mb-1">จัดการสินค้า</h3>
+                            <p class="text-xs text-yellow-100">แก้ไข/ลบ/เพิ่ม</p>
+                        </div>
+                    </div>
+                    <div class="dashboard-card bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl shadow-lg p-4 text-white cursor-pointer"
+                         onclick="showPage('manageMembersPage')">
+                        <div class="text-center">
+                            <i class="fas fa-users-cog text-2xl mb-2"></i>
+                            <h3 class="text-sm font-semibold mb-1">จัดการสมาชิก</h3>
+                            <p class="text-xs text-pink-100">แก้ไข/ลบ/เพิ่ม</p>
+                        </div>
+                    </div>
+                    <div class="dashboard-card bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg p-4 text-white cursor-pointer"
+                         onclick="showPage('reportsPage')">
+                        <div class="text-center">
+                            <i class="fas fa-chart-line text-2xl mb-2"></i>
+                            <h3 class="text-sm font-semibold mb-1">รายงาน</h3>
+                            <p class="text-xs text-orange-100">สถิติการขาย</p>
+                        </div>
+                    </div>
+                    <div class="dashboard-card bg-gradient-to-br from-gray-600 to-gray-800 rounded-xl shadow-lg p-4 text-white cursor-pointer"
+                         onclick="showPage('settingsPage')">
+                        <div class="text-center">
+                            <i class="fas fa-cog text-2xl mb-2"></i>
+                            <h3 class="text-sm font-semibold mb-1">ตั้งค่า</h3>
+                            <p class="text-xs text-gray-300">ตั้งค่าระบบ</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="stat-card bg-white rounded-xl shadow-sm p-6 border">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-800">ยอดขายวันนี้</h3>
+                            <i class="fas fa-calendar-day text-blue-500 text-2xl"></i>
+                        </div>
+                        <div class="text-3xl font-bold text-gray-900 mb-2" id="todaySales">฿0</div>
+                        <p class="text-sm text-gray-500" id="todayTransactions">0 รายการ</p>
+                    </div>
+                    <div class="stat-card bg-white rounded-xl shadow-sm p-6 border">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-800">สมาชิกทั้งหมด</h3>
+                            <i class="fas fa-users text-green-500 text-2xl"></i>
+                        </div>
+                        <div class="text-3xl font-bold text-gray-900 mb-2" id="totalMembers">0</div>
+                        <p class="text-sm text-gray-500">สมาชิกที่ลงทะเบียน</p>
+                    </div>
+                    <div class="stat-card bg-white rounded-xl shadow-sm p-6 border">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-800">สินค้าทั้งหมด</h3>
+                            <i class="fas fa-box text-purple-500 text-2xl"></i>
+                        </div>
+                        <div class="text-3xl font-bold text-gray-900 mb-2" id="totalProducts">0</div>
+                        <p class="text-sm text-gray-500">รายการสินค้า</p>
+                    </div>
+                    <div class="stat-card bg-white rounded-xl shadow-sm p-6 border">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-800">สินค้าใกล้หมด</h3>
+                            <i class="fas fa-exclamation-triangle text-yellow-500 text-2xl"></i>
+                        </div>
+                        <div class="text-3xl font-bold text-gray-900 mb-2" id="lowStockCount">0</div>
+                        <p class="text-sm text-gray-500">รายการ</p>
+                    </div>
+                </div>
+
+                <!-- Charts & Recent Activity -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="card bg-white rounded-xl shadow-sm p-6 border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">การขายล่าสุด</h3>
+                        <div id="recentSales" class="space-y-3">
+                            <div class="text-center text-gray-500 py-8">
+                                <i class="fas fa-receipt text-4xl mb-4 opacity-50"></i>
+                                <p>ไม่มีข้อมูลการขาย</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card bg-white rounded-xl shadow-sm p-6 border">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">ยอดขาย 7 วันล่าสุด</h3>
+                        <div class="h-64">
+                            <canvas id="quickChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Page: Payment (Full Width by default) -->
+            <div id="paymentPage" class="page-content p-4 sm:p-6 lg:p-8 hidden">
+                <div class="card bg-white rounded-xl shadow-sm border p-6">
+                    <div class="border-b pb-4 mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                            <i class="fas fa-shopping-cart text-blue-600 mr-3"></i>
+                            ขายสินค้า
+                        </h2>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Left Column: Product Selection -->
+                        <div class="lg:col-span-2 space-y-6">
+                            <div class="card bg-gray-50 rounded-lg p-4">
+                                <h3 class="font-semibold mb-4 flex items-center">
+                                    <i class="fas fa-qrcode mr-2"></i>
+                                    สแกนบาร์โค้ด
+                                </h3>
+                                <div class="flex space-x-2 mb-4">
+                                    <button id="startScanBtn" class="btn-primary text-white px-4 py-2 rounded-lg flex items-center space-x-2">
+                                        <i class="fas fa-camera"></i>
+                                        <span>เริ่มสแกน</span>
+                                    </button>
+                                    <button id="stopScanBtn" class="btn-danger text-white px-4 py-2 rounded-lg flex items-center space-x-2 hidden">
+                                        <i class="fas fa-stop"></i>
+                                        <span>หยุดสแกน</span>
+                                    </button>
+                                </div>
+                                <div id="qr-reader" class="w-full hidden"></div>
+                            </div>
+
+                            <div class="card bg-gray-50 rounded-lg p-4">
+                                <h3 class="font-semibold mb-4 flex items-center">
+                                    <i class="fas fa-keyboard mr-2"></i>
+                                    ใส่บาร์โค้ดด้วยตนเอง
+                                </h3>
+                                <div class="flex space-x-2">
+                                    <input type="text" id="manualBarcode" placeholder="กรอกบาร์โค้ดสินค้า" 
+                                           class="form-input flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    <button onclick="searchByBarcode()" class="btn-success text-white px-4 py-2 rounded-lg">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="card bg-gray-50 rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h3 class="font-semibold flex items-center">
+                                        <i class="fas fa-th-large mr-2"></i>
+                                        เลือกสินค้า
+                                    </h3>
+                                    <div class="flex items-center space-x-2">
+                                        <input type="text" id="productSearchInput" placeholder="ค้นหาสินค้า..." 
+                                               class="form-input px-3 py-1 border rounded-lg text-sm w-48" oninput="filterProductGrid()">
+                                        <select id="categoryFilter" class="form-input px-3 py-1 border rounded-lg text-sm" onchange="filterProductGrid()">
+                                            <option value="">ทุกหมวดหมู่</option>
+                                            <option value="อาหาร">อาหาร</option>
+                                            <option value="เครื่องดื่ม">เครื่องดื่ม</option>
+                                            <option value="ขนม">ขนม</option>
+                                            <option value="เครื่องเขียน">เครื่องเขียน</option>
+                                            <option value="อื่นๆ">อื่นๆ</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div id="productGrid" class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3 max-h-96 overflow-y-auto custom-scrollbar"></div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column: Cart & Payment -->
+                        <div class="space-y-6">
+                            <div class="card bg-gray-50 rounded-lg p-4">
+                                <h3 class="font-semibold mb-4 flex items-center justify-between">
+                                    <span><i class="fas fa-shopping-basket mr-2"></i>รายการสั่งซื้อ</span>
+                                    <button onclick="clearCart()" class="text-red-600 hover:text-red-700 text-sm">
+                                        <i class="fas fa-trash mr-1"></i>ล้างรายการ
+                                    </button>
+                                </h3>
+                                <div id="cartItems" class="space-y-2 mb-4 max-h-60 overflow-y-auto custom-scrollbar"></div>
+                                <div class="border-t pt-4">
+                                    <div class="flex justify-between text-xl font-bold">
+                                        <span>ยอดรวม:</span>
+                                        <span id="totalAmount">฿0</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card bg-gray-50 rounded-lg p-4">
+                                <h3 class="font-semibold mb-4 flex items-center">
+                                    <i class="fas fa-user mr-2"></i>
+                                    สมาชิก (ไม่บังคับ)
+                                </h3>
+                                <select id="memberSelect" class="form-input w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    <option value="">เลือกสมาชิก (ไม่บังคับ)</option>
+                                </select>
+                            </div>
+
+                            <div class="card bg-gray-50 rounded-lg p-4">
+                                <h3 class="font-semibold mb-4 flex items-center">
+                                    <i class="fas fa-credit-card mr-2"></i>
+                                    วิธีชำระเงิน
+                                </h3>
+                                <div class="grid grid-cols-1 gap-2">
+                                    <button class="payment-method bg-white border-2 border-gray-300 hover:border-blue-500 rounded-lg p-3 flex items-center justify-center space-x-2" data-method="cash">
+                                        <i class="fas fa-money-bill-wave text-green-600"></i>
+                                        <span>เงินสด</span>
+                                    </button>
+                                    <button class="payment-method bg-white border-2 border-gray-300 hover:border-blue-500 rounded-lg p-3 flex items-center justify-center space-x-2" data-method="promptpay">
+                                        <i class="fas fa-qrcode text-blue-600"></i>
+                                        <span>พร้อมเพย์</span>
+                                    </button>
+                                    <button class="payment-method bg-white border-2 border-gray-300 hover:border-blue-500 rounded-lg p-3 flex items-center justify-center space-x-2" data-method="transfer">
+                                        <i class="fas fa-university text-purple-600"></i>
+                                        <span>โอนเงิน</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="cashDetails" class="card bg-gray-50 rounded-lg p-4 hidden">
+                                <h3 class="font-semibold mb-4">รายละเอียดการชำระเงินสด</h3>
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1">เงินที่ได้รับ</label>
+                                        <input type="number" id="receivedAmount" placeholder="0.00" step="0.01" min="0"
+                                               class="form-input w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                               oninput="calculateChange()">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1">เงินทอน</label>
+                                        <input type="text" id="changeAmount" readonly
+                                               class="w-full px-3 py-2 border rounded-lg bg-gray-100">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="promptpayDetails" class="card bg-gray-50 rounded-lg p-4 hidden">
+                                <h3 class="font-semibold mb-4 text-center">แสกน QR Code เพื่อชำระเงิน</h3>
+                                <div class="text-center">
+                                    <div id="promptpayQR" class="bg-white p-4 rounded-lg inline-block mb-4">
+                                        <img id="promptpayQRImage" class="w-48 h-48 mx-auto" style="display: none;">
+                                        <div class="w-48 h-48 bg-gray-200 flex items-center justify-center mx-auto" id="promptpayPlaceholder">
+                                            <i class="fas fa-qrcode text-4xl text-gray-400"></i>
+                                        </div>
+                                    </div>
+                                    <p class="text-sm text-gray-600" id="promptpayInfo">โหลด QR Code...</p>
+                                </div>
+                            </div>
+
+                            <button id="checkoutBtn" disabled
+                                    class="w-full btn-success text-white font-bold py-4 rounded-lg transition-colors flex items-center justify-center space-x-2 disabled:bg-gray-400">
+                                <i class="fas fa-cash-register"></i>
+                                <span>ชำระเงิน</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Page: Settings (Full Width) -->
+            <div id="settingsPage" class="page-content p-4 sm:p-6 lg:p-8 hidden">
+                <!-- **** นี่คือ div ที่แก้ไขแล้ว (ลบ max-w-7xl mx-auto ออก) **** -->
+                <div class="card bg-white rounded-xl shadow-sm border p-6">
+                    <div class="border-b pb-4 mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                            <i class="fas fa-cog text-gray-600 mr-3"></i>
+                            ตั้งค่าระบบ
+                        </h2>
+                    </div>
+                    
+                    <form id="settingsForm" class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Column 1: ข้อมูลร้าน -->
+                            <div class="space-y-4">
+                                <h3 class="text-lg font-semibold text-gray-800 border-b pb-2">ข้อมูลร้าน</h3>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">ชื่อร้าน</label>
+                                    <input type="text" id="settingAppName"
+                                           class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">ราคาหุ้นละ (บาท)</label>
+                                    <input type="number" id="settingSharePrice" min="1" step="1"
+                                           class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">คำนำหน้าบาร์โค้ด</label>
+                                    <input type="text" id="settingBarcodePrefix" maxlength="5"
+                                           class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">ข้อความท้ายใบเสร็จ</label>
+                                    <textarea id="settingReceiptFooter" rows="2"
+                                              class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Google Drive Folder ID</label>
+                                    <div class="flex space-x-2">
+                                        <input type="text" id="settingDriveFolderId"
+                                               class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                               placeholder="กรอก ID โฟลเดอร์ หรือกด 'สร้าง'">
+                                        <button type="button" id="createDriveFolderBtn" 
+                                                class="btn-primary text-white px-4 py-3 rounded-lg flex items-center space-x-2">
+                                            <i class="fas fa-folder-plus"></i>
+                                            <span>สร้าง</span>
+                                        </button>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-1">โฟลเดอร์สำหรับเก็บรูปภาพสินค้าและ QR Code</p>
+                                </div>
+
+                            </div>
+
+                            <!-- Column 2: การชำระเงิน -->
+                            <div class="space-y-4">
+                                <h3 class="text-lg font-semibold text-gray-800 border-b pb-2">การชำระเงิน</h3>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">หมายเลขพร้อมเพย์</label>
+                                    <input type="text" id="settingPromptpayNumber"
+                                           class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                           placeholder="08xxxxxxxx">
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">ชื่อบัญชีพร้อมเพย์</label>
+                                    <input type="text" id="settingPromptpayName"
+                                           class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">QR Code พร้อมเพย์</label>
+                                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                                        <i class="fas fa-cloud-upload-alt text-2xl text-gray-400 mb-2"></i>
+                                        <p class="text-gray-600 mb-2">อัพโหลดรูป QR Code พร้อมเพย์</p>
+                                        <input type="file" id="promptpayQRInput" accept="image/*" class="hidden" onchange="previewPromptpayQR(this)">
+                                        <button type="button" onclick="document.getElementById('promptpayQRInput').click()" 
+                                                class="btn-primary text-white px-4 py-2 rounded-lg">
+                                            เลือกรูปภาพ
+                                        </button>
+                                    </div>
+                                    <input type="hidden" id="settingPromptpayQRUrl">
+                                    <div id="promptpayQRPreview" class="mt-4 hidden text-center">
+                                        <img id="promptpayQRPreviewImg" class="w-32 h-32 object-cover rounded-lg border mx-auto">
+                                        <p class="text-center text-sm text-gray-500 mt-2">QR Code ปัจจุบัน</g>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">เลขบัญชีธนาคาร</label>
+                                    <input type="text" id="settingBankAccount"
+                                           class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">ชื่อธนาคาร</label>
+                                    <input type="text" id="settingBankName"
+                                           class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="settingEnableCashChange"
+                                           class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                    <label for="settingEnableCashChange" class="ml-2 block text-sm text-gray-700">
+                                        เปิดใช้งานการคิดเงินทอน
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Save/Cancel Buttons -->
+                        <div class="flex space-x-4 pt-6 border-t">
+                            <button type="submit" 
+                                    class="btn-primary text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center space-x-2 flex-1">
+                                <i class="fas fa-save"></i>
+                                <span>บันทึกการตั้งค่า</span>
+                            </button>
+                            <button type="button" onclick="showDashboard()"
+                                    class="btn-secondary px-8 text-white font-bold py-3 rounded-lg transition-colors">
+                                ยกเลิก
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Page: Manage Products (Full Width) -->
+            <div id="manageProductsPage" class="page-content p-3 sm:p-6 lg:p-8 hidden">
+                <div class="card bg-white rounded-xl shadow-sm border p-4 sm:p-6">
+                    <div class="border-b pb-4 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <h2 class="text-lg sm:text-2xl font-bold text-gray-800 flex items-center">
+                            <i class="fas fa-boxes text-yellow-600 mr-2 sm:mr-3"></i>
+                            <span>จัดการสินค้า</span>
+                        </h2>
+                        <div class="flex gap-2 flex-wrap">
+                            <button onclick="exportProductsToExcel()" class="text-white px-3 py-2 rounded-lg flex items-center space-x-2 text-xs sm:text-sm whitespace-nowrap" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);">
+                                <i class="fas fa-file-excel"></i>
+                                <span>Excel</span>
+                            </button>
+                            <button onclick="exportProductsToCSV()" class="text-white px-3 py-2 rounded-lg flex items-center space-x-2 text-xs sm:text-sm whitespace-nowrap" style="background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);">
+                                <i class="fas fa-file-csv"></i>
+                                <span>CSV</span>
+                            </button>
+                            <button onclick="printAllStickers()" class="text-white px-3 py-2 rounded-lg flex items-center space-x-2 text-xs sm:text-sm whitespace-nowrap" style="background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);">
+                                <i class="fas fa-print"></i>
+                                <span>พิมพ์สติ๊กเกอร์</span>
+                            </button>
+                            <button onclick="showModal('addProductModal')" class="btn-success text-white px-3 sm:px-4 py-2 rounded-lg flex items-center space-x-2 text-xs sm:text-sm whitespace-nowrap">
+                                <i class="fas fa-plus"></i>
+                                <span>เพิ่มสินค้า</span>
+                            </button>
+                        </div>
+                    </div>
+                
+                    <div class="mb-4">
+                        <input type="text" id="productSearchInputManage" placeholder="ค้นหาสินค้า..." 
+                               class="form-input w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                               oninput="filterProducts()">
+                    </div>
+                    <div id="productManagementList" class="overflow-x-auto">
+                        <!-- Product list items will be injected here by script.js -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page: Manage Members (Full Width) -->
+            <div id="manageMembersPage" class="page-content p-4 sm:p-6 lg:p-8 hidden">
+                <!-- **** นี่คือ div ที่แก้ไขแล้ว (ลบ max-w-6xl mx-auto ออก) **** -->
+                <div class="card bg-white rounded-xl shadow-sm border p-6">
+                    <div class="border-b pb-4 mb-6 flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                            <i class="fas fa-users-cog text-pink-600 mr-3"></i>
+                            จัดการสมาชิก
+                        </h2>
+                        <button onclick="showModal('addMemberModal')" class="btn-success text-white px-4 py-2 rounded-lg flex items-center space-x-2">
+                            <i class="fas fa-user-plus"></i>
+                            <span>เพิ่มสมาชิกใหม่</span>
+                        </button>
+                    </div>
+                
+                    <!-- NEW: สรุปรายได้ -->
+                    <div class="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
+                            <h3 class="text-sm font-medium text-blue-700 mb-1">ยอดขายรวม</h3>
+                            <p id="memberSummaryTotalSales" class="text-2xl font-bold text-blue-600">฿0</p>
+                        </div>
+                        <div class="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-4 border border-red-200">
+                            <h3 class="text-sm font-medium text-red-700 mb-1">ต้นทุนรวม</h3>
+                            <p id="memberSummaryTotalCost" class="text-2xl font-bold text-red-600">฿0</p>
+                        </div>
+                        <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
+                            <h3 class="text-sm font-medium text-green-700 mb-1">กำไรสุทธิ</h3>
+                            <p id="memberSummaryProfit" class="text-2xl font-bold text-green-600">฿0</p>
+                        </div>
+                        <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
+                            <h3 class="text-sm font-medium text-purple-700 mb-1">ปันผลต่อหุ้น</h3>
+                            <p id="memberSummaryPerShare" class="text-2xl font-bold text-purple-600">฿0</p>
+                        </div>
+                    </div>
+
+                    <!-- สรุปเพิ่มเติม -->
+                    <div class="mb-6 bg-gray-50 rounded-lg p-4 border border-gray-200 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <h3 class="text-sm font-medium text-gray-700 mb-1">จำนวนสมาชิก</h3>
+                            <p id="memberSummaryCount" class="text-xl font-bold text-gray-800">0 คน</p>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-medium text-gray-700 mb-1">รวมหุ้นทั้งหมด</h3>
+                            <p id="memberSummaryTotalShares" class="text-xl font-bold text-gray-800">0 หุ้น</p>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-medium text-gray-700 mb-1">ปันผลรวม</h3>
+                            <p id="memberSummaryTotalDividend" class="text-xl font-bold text-gray-800">฿0</p>
+                        </div>
+                    </div>
+                
+                    <div class="mb-4">
+                        <input type="text" id="memberSearchInput" placeholder="ค้นหาสมาชิกด้วยชื่อ, รหัสนักเรียน..." 
+                               class="form-input w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                               oninput="filterMembers()">
+                    </div>
+                    <div id="memberManagementList" class="space-y-4">
+                        <!-- Member list items will be injected here by script.js -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Page: Manage Users (Full Width) -->
+            <div id="manageUsersPage" class="page-content p-4 sm:p-6 lg:p-8 hidden">
+                <!-- **** นี่คือ div ที่แก้ไขแล้ว (ลบ max-w-4xl mx-auto ออก) **** -->
+                <div class="card bg-white rounded-xl shadow-sm border p-6">
+                    <div class="border-b pb-4 mb-6 flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                            <i class="fas fa-user-shield text-indigo-600 mr-3"></i>
+                            จัดการผู้ใช้งาน (Admin)
+                        </h2>
+                        <button onclick="showModal('addUserModal')" class="btn-success text-white px-4 py-2 rounded-lg flex items-center space-x-2">
+                            <i class="fas fa-user-plus"></i>
+                            <span>เพิ่มผู้ใช้งาน</span>
+                        </button>
+                    </div>
+                
+                    <div id="userManagementList" class="space-y-4">
+                        <!-- User list items will be injected here by script.js -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Page: Reports (Full Width) -->
+            <div id="reportsPage" class="page-content p-4 sm:p-6 lg:p-8 hidden">
+                <!-- **** นี่คือ div ที่แก้ไขแล้ว (ลบ max-w-7xl mx-auto ออก) **** -->
+                <div class="card bg-white rounded-xl shadow-sm border p-6">
+                    <div class="border-b pb-4 mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                            <i class="fas fa-chart-line text-orange-600 mr-3"></i>
+                            รายงานยอดขาย
+                        </h2>
+                    </div>
+                
+                    <div>
+                        <div class="card bg-gray-50 rounded-lg p-4 mb-6">
+                            <div class="flex flex-wrap items-center space-x-4 space-y-2 md:space-y-0">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">ช่วงเวลา:</label>
+                                    <select id="reportPeriod" class="form-input px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                        <option value="daily">รายวัน</option>
+                                        <option value="weekly">รายสัปดาห์</option>
+                                        <option value="monthly">รายเดือน</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">วันที่:</label>
+                                    <input type="date" id="reportDate" class="form-input px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div class="pt-4">
+                                    <button onclick="loadReport()" class="btn-primary text-white px-6 py-2 rounded-lg flex items-center space-x-2">
+                                        <i class="fas fa-search"></i>
+                                        <span>ดูรายงาน</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="reportContent" class="hidden">
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                <div class="stat-card bg-blue-50 rounded-lg p-4 text-center">
+                                    <h3 class="text-sm font-medium text-gray-600">ยอดขายรวม</h3>
+                                    <p id="reportTotalSales" class="text-2xl font-bold text-blue-600">฿0</p>
+                                </div>
+                                <div class="stat-card bg-green-50 rounded-lg p-4 text-center">
+                                    <h3 class="text-sm font-medium text-gray-600">จำนวนรายการ</h3>
+                                    <p id="reportTotalTransactions" class="text-2xl font-bold text-green-600">0</p>
+                                </div>
+                                <div class="stat-card bg-yellow-50 rounded-lg p-4 text-center">
+                                    <h3 class="text-sm font-medium text-gray-600">ยอดเฉลี่ยต่อรายการ</h3>
+                                    <p id="reportAverageTransaction" class="text-2xl font-bold text-yellow-600">฿0</p>
+                                </div>
+                                <div class="stat-card bg-purple-50 rounded-lg p-4 text-center">
+                                    <h3 class="text-sm font-medium text-gray-600">สมาชิกทั้งหมด</h3>
+                                    <p id="reportTotalMembers" class="text-2xl font-bold text-purple-600">0</p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div class="card bg-white rounded-lg border p-4">
+                                    <h3 class="text-lg font-semibold mb-4">กราฟยอดขาย</h3>
+                                    <div style="position: relative; height: 250px;">
+                                        <canvas id="salesChart"></canvas>
+                                    </div>
+                                </div>
+
+                                <div class="card bg-white rounded-lg border p-4">
+                                    <h3 class="text-lg font-semibold mb-4">สินค้าขายดี Top 10</h3>
+                                    <div id="topProductsList" class="space-y-2 max-h-64 overflow-y-auto custom-scrollbar"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="noReportData" class="text-center py-12">
+                            <i class="fas fa-chart-line text-6xl text-gray-300 mb-4"></i>
+                            <p class="text-gray-500">เลือกช่วงเวลาเพื่อดูรายงาน</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Modal: Add Product -->
+    <div id="addProductModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 max-h-screen overflow-y-auto">
+            <div class="p-6 border-b">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                        <i class="fas fa-plus-circle text-green-600 mr-3"></i>
+                        เพิ่มสินค้าใหม่
+                    </h2>
+                    <button onclick="hideModal('addProductModal')" class="text-gray-400 hover:text-gray-600 text-2xl">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="p-6">
+                <form id="addProductForm" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">ชื่อสินค้า *</label>
+                                <input type="text" id="productName" required
+                                       class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                       placeholder="กรอกชื่อสินค้า">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">หมวดหมู่</label>
+                                <select id="productCategory" 
+                                        class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    <option value="อาหาร">อาหาร</option>
+                                    <option value="เครื่องดื่ม">เครื่องดื่ม</option>
+                                    <option value="ขนม">ขนม</option>
+                                    <option value="เครื่องเขียน">เครื่องเขียน</option>
+                                    <option value="อื่นๆ">อื่นๆ</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">ราคาขาย (บาท) *</label>
+                                <input type="number" id="productPrice" required min="0" step="0.01"
+                                       class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                       placeholder="0.00">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">ราคาต้นทุน (บาท)</label>
+                                <input type="number" id="productCost" min="0" step="0.01"
+                                       class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                       placeholder="0.00">
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">บาร์โค้ด</label>
+                                <div class="flex space-x-2">
+                                    <input type="text" id="productBarcode"
+                                           class="form-input flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                           placeholder="จะสร้างอัตโนมัติถ้าไม่กรอก">
+                                    <button type="button" onclick="generateNewBarcode()" 
+                                            class="btn-primary text-white px-4 py-3 rounded-lg">
+                                        <i class="fas fa-magic"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">จำนวนสต็อก *</label>
+                                <input type="number" id="productStock" required min="0"
+                                       class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                       placeholder="0">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">สต็อกขั้นต่ำ</label>
+                                <input type="number" id="productMinStock" min="0" value="5"
+                                       class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">หน่วย</label>
+                                <input type="text" id="productUnit" value="ชิ้น"
+                                       class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                       placeholder="ชิ้น, แพ็ค, กิโลกรัม">
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">คำอธิบาย</label>
+                        <textarea id="productDescription" rows="3"
+                                  class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                  placeholder="รายละเอียดสินค้า (ไม่บังคับ)"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">รูปภาพสินค้า</label>
+                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                            <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-4"></i>
+                            <p class="text-gray-600 mb-2">ลากและวางรูปภาพที่นี่ หรือ</p>
+                            <input type="file" id="productImage" accept="image/*" class="hidden" onchange="previewImage(this)">
+                            <button type="button" onclick="document.getElementById('productImage').click()" 
+                                    class="btn-primary text-white px-4 py-2 rounded-lg">
+                                เลือกรูปภาพ
+                            </button>
+                        </div>
+                        <div id="imagePreview" class="mt-4 hidden">
+                            <img id="previewImg" class="w-32 h-32 object-cover rounded-lg border mx-auto">
+                            <p class="text-center text-sm text-gray-500 mt-2">ตัวอย่างรูปภาพ</p>
+                        </div>
+                    </div>
+                    <div id="barcodeDisplay" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">บาร์โค้ด</label>
+                        <div class="text-center bg-white border rounded-lg p-4">
+                            <img id="barcodeImage" class="mx-auto mb-2" style="max-height: 100px;">
+                            <p id="barcodeText" class="font-mono text-sm"></p>
+                        </div>
+                    </div>
+                    <div class="flex space-x-4 pt-4">
+                        <button type="submit" 
+                                class="btn-success flex-1 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center space-x-2">
+                            <i class="fas fa-plus"></i>
+                            <span>เพิ่มสินค้า</span>
+                        </button>
+                        <button type="button" onclick="resetForm('addProductForm'); hideModal('addProductModal')"
+                                class="btn-secondary px-8 text-white font-bold py-3 rounded-lg transition-colors">
+                            ยกเลิก
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Edit Product -->
+    <div id="editProductModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 max-h-screen overflow-y-auto">
+            <div class="p-6 border-b">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                        <i class="fas fa-edit text-blue-600 mr-3"></i>
+                        แก้ไขสินค้า
+                    </h2>
+                    <button onclick="hideModal('editProductModal')" class="text-gray-400 hover:text-gray-600 text-2xl">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-6">
+                <form id="editProductForm" class="space-y-6">
+                    <input type="hidden" id="editProductId">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">ชื่อสินค้า *</label>
+                                <input type="text" id="editProductName" required
+                                       class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">หมวดหมู่</label>
+                                <select id="editProductCategory" 
+                                        class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    <option value="อาหาร">อาหาร</option>
+                                    <option value="เครื่องดื่ม">เครื่องดื่ม</option>
+                                    <option value="ขนม">ขนม</option>
+                                    <option value="เครื่องเขียน">เครื่องเขียน</option>
+                                    <option value="อื่นๆ">อื่นๆ</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">ราคาขาย (บาท) *</label>
+                                <input type="number" id="editProductPrice" required min="0" step="0.01"
+                                       class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">ราคาต้นทุน (บาท)</label>
+                                <input type="number" id="editProductCost" min="0" step="0.01"
+                                       class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">บาร์โค้ด</label>
+                                <input type="text" id="editProductBarcode"
+                                       class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">จำนวนสต็อก *</label>
+                                <input type="number" id="editProductStock" required min="0"
+                                       class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">สต็อกขั้นต่ำ</label>
+                                <input type="number" id="editProductMinStock" min="0"
+                                       class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">หน่วย</label>
+                                <input type="text" id="editProductUnit"
+                                       class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">คำอธิบาย</label>
+                        <textarea id="editProductDescription" rows="3"
+                                  class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">รูปภาพสินค้า</label>
+                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                            <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-4"></i>
+                            <p class="text-gray-600 mb-2">เลือกรูปภาพใหม่หรือเก็บรูปเดิม</p>
+                            <input type="file" id="editProductImage" accept="image/*" class="hidden" onchange="previewEditImage(this)">
+                            <button type="button" onclick="document.getElementById('editProductImage').click()" 
+                                    class="btn-primary text-white px-4 py-2 rounded-lg">
+                                เลือกรูปภาพใหม่
+                            </button>
+                        </div>
+                        <input type="hidden" id="editProductImageUrl">
+                        <div id="editImagePreview" class="mt-4 hidden">
+                            <img id="editPreviewImg" class="w-32 h-32 object-cover rounded-lg border mx-auto">
+                            <p class="text-center text-sm text-gray-500 mt-2">รูปภาพปัจจุบัน/ใหม่</p>
+                        </div>
+                    </div>
+                    <div id="editBarcodeDisplay" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">บาร์โค้ด</label>
+                        <div class="text-center bg-white border rounded-lg p-4">
+                            <img id="editBarcodeImage" class="mx-auto mb-2" style="max-height: 100px;">
+                            <p id="editBarcodeText" class="font-mono text-sm"></p>
+                        </div>
+                    </div>
+                    <div class="flex space-x-4 pt-4">
+                        <button type="submit" 
+                                class="btn-primary flex-1 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center space-x-2">
+                            <i class="fas fa-save"></i>
+                            <span>บันทึกการแก้ไข</span>
+                        </button>
+                        <button type="button" onclick="hideModal('editProductModal')"
+                                class="btn-secondary px-8 text-white font-bold py-3 rounded-lg transition-colors">
+                            ยกเลิก
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Add Member -->
+    <div id="addMemberModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-screen overflow-y-auto">
+            <div class="p-6 border-b">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                        <i class="fas fa-user-plus text-purple-600 mr-3"></i>
+                        เพิ่มสมาชิกใหม่
+                    </h2>
+                    <button onclick="hideModal('addMemberModal')" class="text-gray-400 hover:text-gray-600 text-2xl">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="p-6">
+                <form id="addMemberForm" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">รหัสนักเรียน *</label>
+                                <input type="text" id="memberStudentId" required
+                                       class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                       placeholder="เช่น 65001">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">ชื่อ *</label>
+                                <input type="text" id="memberFirstname" required
+                                       class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                       placeholder="ชื่อนักเรียน">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">นามสกุล *</label>
+                                <input type="text" id="memberLastname" required
+                                       class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                       placeholder="นามสกุลนักเรียน">
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">ห้องเรียน/ชั้นปี *</label>
+                                <input type="text" id="memberClassroom" required
+                                       class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                       placeholder="เช่น ม.3/1, ป.6/2">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">จำนวนหุ้น *</label>
+                                <input type="number" id="memberShares" required min="1" max="50" value="1"
+                                       class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                       placeholder="1" onchange="calculateShareAmount()">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">ราคาหุ้นละ (บาท)</label>
+                                <input type="number" id="sharePrice" readonly value="10"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-blue-50 rounded-lg p-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-lg font-semibold text-gray-700">จำนวนเงินที่ต้องชำระ:</span>
+                            <span id="totalShareAmount" class="text-2xl font-bold text-blue-600">฿10</span>
+                        </div>
+                    </div>
+                    <div class="flex space-x-4 pt-4">
+                        <button type="submit" 
+                                class="flex-1 btn-primary text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center space-x-2" style="background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);"> <i class="fas fa-user-plus"></i>
+                            <span>เพิ่มสมาชิก</span>
+                        </button>
+                        <button type="button" onclick="resetForm('addMemberForm'); hideModal('addMemberModal')"
+                                class="btn-secondary px-8 text-white font-bold py-3 rounded-lg transition-colors">
+                            ยกเลิก
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Edit Member -->
+    <div id="editMemberModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-screen overflow-y-auto">
+            <div class="p-6 border-b">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                        <i class="fas fa-user-edit text-blue-600 mr-3"></i>
+                        แก้ไขสมาชิก
+                    </h2>
+                    <button onclick="hideModal('editMemberModal')" class="text-gray-400 hover:text-gray-600 text-2xl">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-6">
+                <form id="editMemberForm" class="space-y-6">
+                    <input type="hidden" id="editMemberId">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">รหัสนักเรียน *</label>
+                                <input type="text" id="editMemberStudentId" required
+                                       class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">ชื่อ *</label>
+                                <input type="text" id="editMemberFirstname" required
+                                       class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">นามสกุล *</label>
+                                <input type="text" id="editMemberLastname" required
+                                       class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">ห้องเรียน/ชั้นปี *</label>
+                                <input type="text" id="editMemberClassroom" required
+                                       class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">จำนวนหุ้น *</label>
+                                <input type="number" id="editMemberShares" required min="1" max="50"
+                                       class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                       onchange="calculateEditShareAmount()">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">ราคาหุ้นละ (บาท)</label>
+                                <input type="number" id="editSharePrice" readonly
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-blue-50 rounded-lg p-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-lg font-semibold text-gray-700">ยอดรวมหุ้น:</span>
+                            <span id="editTotalShareAmount" class="text-2xl font-bold text-blue-600">฿0</span>
+                        </div>
+                    </div>
+                    <div class="flex space-x-4 pt-4">
+                        <button type="submit" 
+                                class="btn-primary flex-1 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center space-x-2">
+                            <i class="fas fa-save"></i>
+                            <span>บันทึกการแก้ไข</span>
+                        </button>
+                        <button type="button" onclick="hideModal('editMemberModal')"
+                                class="btn-secondary px-8 text-white font-bold py-3 rounded-lg transition-colors">
+                            ยกเลิก
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal: Add User -->
+    <div id="addUserModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-screen overflow-y-auto">
+            <div class="p-6 border-b">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                        <i class="fas fa-user-plus text-indigo-600 mr-3"></i>
+                        เพิ่มผู้ใช้งานใหม่
+                    </h2>
+                    <button onclick="hideModal('addUserModal')" class="text-gray-400 hover:text-gray-600 text-2xl">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-6">
+                <form id="addUserForm" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">ชื่อ (ที่แสดง)</label>
+                        <input type="text" id="addUserName" required class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="เช่น ครูสมชาย">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">ชื่อผู้ใช้ (สำหรับ Login) *</label>
+                        <input type="text" id="addUserUsername" required class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg" placeholder="เช่น teacher_somchai">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">รหัสผ่าน *</label>
+                        <input type="password" id="addUserPassword" required class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">บทบาท (Role) *</label>
+                        <select id="addUserRole" class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg">
+                            <option value="teacher">ครูผู้ดูแล (Teacher)</option>
+                            <option value="admin">ผู้ดูแลระบบ (Admin)</option>
+                        </select>
+                    </div>
+                    <div class="flex space-x-4 pt-4">
+                        <button type="submit" 
+                                class="btn-success flex-1 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center space-x-2">
+                            <i class="fas fa-plus"></i>
+                            <span>เพิ่มผู้ใช้งาน</span>
+                        </button>
+                        <button type="button" onclick="resetForm('addUserForm'); hideModal('addUserModal')"
+                                class="btn-secondary px-8 text-white font-bold py-3 rounded-lg transition-colors">
+                            ยกเลิก
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal: Edit User -->
+    <div id="editUserModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-screen overflow-y-auto">
+            <div class="p-6 border-b">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                        <i class="fas fa-user-edit text-indigo-600 mr-3"></i>
+                        แก้ไขผู้ใช้งาน
+                    </h2>
+                    <button onclick="hideModal('editUserModal')" class="text-gray-400 hover:text-gray-600 text-2xl">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-6">
+                <form id="editUserForm" class="space-y-6">
+                    <input type="hidden" id="editUserId">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">ชื่อ (ที่แสดง)</label>
+                        <input type="text" id="editUserName" required class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">ชื่อผู้ใช้ (สำหรับ Login)</label>
+                        <input type="text" id="editUserUsername" readonly class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">รหัสผ่านใหม่ (ว่างไว้ถ้าไม่เปลี่ยน)</label>
+                        <input type="password" id="editUserPassword" class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">บทบาท (Role)</label>
+                        <select id="editUserRole" class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg">
+                            <option value="teacher">ครูผู้ดูแล (Teacher)</option>
+                            <option value="admin">ผู้ดูแลระบบ (Admin)</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="editUserActive" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                        <label for="editUserActive" class="ml-2 block text-sm text-gray-700">
+                            เปิดใช้งาน (Active)
+                        </label>
+                    </div>
+                    <div class="flex space-x-4 pt-4">
+                        <button type="submit" 
+                                class="btn-primary flex-1 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center space-x-2">
+                            <i class="fas fa-save"></i>
+                            <span>บันทึกการแก้ไข</span>
+                        </button>
+                        <button type="button" onclick="hideModal('editUserModal')"
+                                class="btn-secondary px-8 text-white font-bold py-3 rounded-lg transition-colors">
+                            ยกเลิก
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    
+    <?!= include('script') ?>
+    <?!= include('js') ?>
+
+</body>
+</html>
