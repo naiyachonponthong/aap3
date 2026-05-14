@@ -1,4 +1,3 @@
-<script>
 /**
  * script.js - Core Application Logic v2.6
  *
@@ -3224,4 +3223,3 @@ function printAllStickers() {
     w.document.close();
     setTimeout(function() { w.print(); w.close(); }, 500);
 }
-</script>
